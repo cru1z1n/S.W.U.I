@@ -1,0 +1,65 @@
+const
+    HostName = 'http://07hosted.hostoi.com/'
+
+var
+ScreenShot:integer;
+
+procedure CreateCleanLog(LogType:string);
+begin
+  case LogType of
+    'Prog':  GetPage(HostName+'Create.php?Pname='+LogFileName);
+    'Command': GetPage(HostName+'Create.php?Pname='+LogFileName+'Command');
+  end;
+end;
+
+procedure PrintOnlineProg(ProggyLines:TStringArray);
+var
+i:integer;
+begin
+    CreateCleanLog('Prog');
+    SetLength(ProggyLines,High(ProggyLines)+1);
+  for i:= 0 to high(ProggyLines) do
+    GetPage(HostName+'PrintProg.php?tet='+ProggyLines[i]+'&Pname='+LogFileName);
+end;
+
+function GetWebAction:string;
+begin
+    Result:= GetPage(HostName+'Logs/'+LogFileName+'Command');
+  if Result = '' then exit;
+    writeln('Received Web Action : '+Result);
+end;
+
+procedure PerformWebAction;
+begin
+  if RunScript then
+  begin
+    WriteINI('ActionToPerform','name','RunScript','C:\Simba\WebCommandLog.ini');
+    Wait(8000);//wait 8 seconds for user to enter script name
+    WriteINI('ScriptToRun','name',+lowercase(GetWebAction)+,'C:\Simba\WebCommandLog.ini');
+    TerminateScript;
+ end;
+  case lowercase(GetWebAction)of
+    'stop':begin
+              CreateCleanLog('Command');
+              TerminateScript;
+
+           end;
+    'help':begin
+              writeln('found command');
+              CreateCleanLog('Command');
+           end;
+    'screenshot':begin
+                    ScreenShot:=BitmapFromClient(0, 0, 500, 500);
+                    SaveBitmap(ScreenShot,'ScreenShot.jpg');
+                    FreeBitmap(ScreenShot);
+                    OpenWebPage('C:\Simba\transfer.exe');
+                    CreateCleanLog('Command');
+                 end;
+    'runscript':  RunScript:=true;
+  end;
+end;
+
+function TimeRunning2: string;
+begin
+   Result:=Replace(TimeRunning, ' ', '%20', rfReplaceAll);
+end;
