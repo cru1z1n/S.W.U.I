@@ -1,0 +1,28 @@
+program SWUITest;
+{$include SWUI.simba}
+{$X+}
+
+const
+    OresMined = 24;
+    Fished = 125;
+    blah = 1366;
+
+var TimeRunning2:string;
+
+begin
+  SetupSWUI('name');
+  repeat
+
+    TimeRunning2:=Replace(MsToTime(GetTimeRunning, Time_Formal), ' ', '%20', [rfReplaceAll]);
+
+    PrintOnlineProg(['Cru1z1ns%20Online%20Prog',
+                     'Time-Running:%20'+TimeRunning2,
+                     'mined:%20'+IntToStr(OresMined),
+                     'Fished:%20'+IntToStr(Fished),
+                     'blah:%20'+IntToStr(blah)],
+                     LogFileName);
+
+   PerformWebAction(LogFileName);
+   wait(2000);
+ until false;
+end.
