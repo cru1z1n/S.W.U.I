@@ -1,10 +1,48 @@
+{$X+}
+//{$i srl-6/srl.simba}
 const
-    HostName = 'http://07hosted.hostoi.com/'
+  TIME_FORMAL = 0;
+  TIME_SHORT  = 1;
+  TIME_ABBREV = 2;
+  TIME_BARE   = 3;
+  TIME_FSTOP  = 4;
 
+var RunScript:boolean;
+    HostName,LogFileName:string;
+
+//srl imported
+function msToTime(MS, TheType: Integer): string;
 var
-ScreenShot:integer;
+  STA: array [0..4] of TVariantArray;
+  Time: array [0..2] of Integer;
+  i: Integer;
+begin
+  Result := '';
 
-procedure CreateCleanLog(LogType:string);
+  if (not(InRange(TheType, 0, High(STA)))) then
+    TheType := TIME_BARE;
+
+  STA[TIME_FORMAL] := [' Hours, ', ' Minutes and ', ' Seconds', False, 0];
+  STA[TIME_SHORT] := ['h ', 'm ', 's', False, 2];
+  STA[TIME_ABBREV] := [' hr ', ' min ', ' sec', False, 0];
+  STA[TIME_BARE] := [':', ':', '', True, 2];
+  STA[TIME_FSTOP] := ['.', '.', '', True, 2];
+
+  ConvertTime(MS, Time[0], Time[1], Time[2]);
+
+  for i := 0 to 2 do
+    if (Time[i] > 0) or (STA[TheType][3]) or (i = 2) then
+      Result := Result + PadZ(IntToStr(Time[i]), STA[TheType][4]) + STA[TheType][i];
+end;
+
+function timeRunning: string;
+begin
+  Result := msToTime(GetTimeRunning(), TIME_FORMAL);
+end;
+
+//end of srl imported
+
+procedure CreateCleanLog(LogType, LogFileName:string);
 begin
   case LogType of
     'Prog':  GetPage(HostName+'Create.php?Pname='+LogFileName);
@@ -12,54 +50,68 @@ begin
   end;
 end;
 
-procedure PrintOnlineProg(ProggyLines:TStringArray);
+procedure PrintOnlineProg(ProggyLines:TStringArray; LogFileName:string);
 var
 i:integer;
 begin
-    CreateCleanLog('Prog');
+    CreateCleanLog('Prog',LogFileName);
     SetLength(ProggyLines,High(ProggyLines)+1);
   for i:= 0 to high(ProggyLines) do
     GetPage(HostName+'PrintProg.php?tet='+ProggyLines[i]+'&Pname='+LogFileName);
 end;
 
-function GetWebAction:string;
+function GetWebAction(LogFileName:string):string;
 begin
     Result:= GetPage(HostName+'Logs/'+LogFileName+'Command');
   if Result = '' then exit;
     writeln('Received Web Action : '+Result);
 end;
 
-procedure PerformWebAction;
+procedure PerformWebAction(LogFileName:string);
+var
+ScreenShot, x, y:integer;
 begin
   if RunScript then
   begin
-    WriteINI('ActionToPerform','name','RunScript','C:\Simba\WebCommandLog.ini');
     Wait(8000);//wait 8 seconds for user to enter script name
-    WriteINI('ScriptToRun','name',+lowercase(GetWebAction)+,'C:\Simba\WebCommandLog.ini');
+    WriteINI('ActionToPerform','name','RunScript','C:\Simba\WebCommandLog.ini');
+    WriteINI('ScriptToRun','name',lowercase(GetWebAction(LogFileName)),'C:\Simba\WebCommandLog.ini');
+    CreateCleanLog('Command', LogFileName);
     TerminateScript;
  end;
-  case lowercase(GetWebAction)of
+  case lowercase(GetWebAction(LogFileName))of
     'stop':begin
-              CreateCleanLog('Command');
+              CreateCleanLog('Command', LogFileName);
               TerminateScript;
 
            end;
     'help':begin
               writeln('found command');
-              CreateCleanLog('Command');
+              CreateCleanLog('Command', LogFileName);
            end;
     'screenshot':begin
-                    ScreenShot:=BitmapFromClient(0, 0, 500, 500);
-                    SaveBitmap(ScreenShot,'ScreenShot.jpg');
+                   // GetClientPosition(x, y);
+                    ScreenShot:=BitmapFromClient(0, 0, 1360, 670);
+                    SaveBitmap(ScreenShot,'C:\Simba\ScreenShot.jpg');
                     FreeBitmap(ScreenShot);
-                    OpenWebPage('C:\Simba\transfer.exe');
-                    CreateCleanLog('Command');
+                    OpenWebPage('C:\Simba\Uploader.exe');
+                    CreateCleanLog('Command', LogFileName);
                  end;
     'runscript':  RunScript:=true;
   end;
 end;
 
-function TimeRunning2: string;
+procedure SetupSWUI(LogName:string;WebHostName :String = 'http://07hosted.hostoi.com/');
 begin
-   Result:=Replace(TimeRunning, ' ', '%20', rfReplaceAll);
+    OpenWebPage('C:\Simba\SWebUi.exe');
+    LogFileName:=LogName;
+    HostName:= WebHostName;
+    CreateCleanLog('Command', LogFileName);
+    WriteLn('SWUI has Started On: '+HostName+'WebProg.html');
+    WriteLn('Your Log Name is: '+LogFileName);
 end;
+
+{function TimeRunning2: string;
+begin
+   Result:=Replace(MsToTime(GetTimeRunning, Time_Formal), ' ', '%20', rfReplaceAll);
+end; }
